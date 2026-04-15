@@ -1,0 +1,746 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Smart Private Cloud Storage Agent API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: storage
+    description: Storage disk management
+  - name: files
+    description: File management
+  - name: ai
+    description: AI agent operations
+  - name: auth
+    description: Authentication and OAuth
+  - name: settings
+    description: User settings and model configuration
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /storage/disks:
+    get:
+      operationId: listDisks
+      tags: [storage]
+      summary: List all available disks
+      responses:
+        "200":
+          description: List of disks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  disks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Disk"
+                required: [disks]
+
+    post:
+      operationId: addDisk
+      tags: [storage]
+      summary: Add a disk to the storage pool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddDiskBody"
+      responses:
+        "201":
+          description: Disk added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Disk"
+
+  /storage/disks/{diskId}:
+    get:
+      operationId: getDisk
+      tags: [storage]
+      summary: Get disk details
+      parameters:
+        - name: diskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Disk details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Disk"
+
+    patch:
+      operationId: updateDisk
+      tags: [storage]
+      summary: Update disk settings
+      parameters:
+        - name: diskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDiskBody"
+      responses:
+        "200":
+          description: Disk updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Disk"
+
+    delete:
+      operationId: removeDisk
+      tags: [storage]
+      summary: Remove a disk from storage pool
+      parameters:
+        - name: diskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Disk removed
+
+  /storage/summary:
+    get:
+      operationId: getStorageSummary
+      tags: [storage]
+      summary: Get storage overview with totals and usage
+      responses:
+        "200":
+          description: Storage summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageSummary"
+
+  /files:
+    get:
+      operationId: listFiles
+      tags: [files]
+      summary: List files with optional path/filter
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+        - name: diskId
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FileItem"
+                  total:
+                    type: integer
+                required: [files, total]
+
+  /files/{fileId}:
+    get:
+      operationId: getFile
+      tags: [files]
+      summary: Get file details
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileItem"
+
+    patch:
+      operationId: moveFile
+      tags: [files]
+      summary: Move/update file location
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoveFileBody"
+      responses:
+        "200":
+          description: File moved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileItem"
+
+    delete:
+      operationId: deleteFile
+      tags: [files]
+      summary: Delete a file
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: File deleted
+
+  /files/recent:
+    get:
+      operationId: getRecentFiles
+      tags: [files]
+      summary: Get recently accessed files
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recent files
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FileItem"
+                required: [files]
+
+  /files/categories:
+    get:
+      operationId: getFileCategories
+      tags: [files]
+      summary: Get file counts by category
+      responses:
+        "200":
+          description: Category breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FileCategory"
+                required: [categories]
+
+  /ai/chat:
+    post:
+      operationId: sendAiMessage
+      tags: [ai]
+      summary: Send message to AI agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatBody"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiChatResponse"
+
+  /ai/suggest-storage:
+    post:
+      operationId: suggestFileStorage
+      tags: [ai]
+      summary: Ask AI to suggest where to store files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuggestStorageBody"
+      responses:
+        "200":
+          description: AI storage suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageSuggestion"
+
+  /ai/messages:
+    get:
+      operationId: getAiMessages
+      tags: [ai]
+      summary: Get chat history with AI agent
+      responses:
+        "200":
+          description: Chat history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AiMessage"
+                required: [messages]
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get user settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update user settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+
+  /settings/models:
+    get:
+      operationId: listAvailableModels
+      tags: [settings]
+      summary: List available AI models
+      responses:
+        "200":
+          description: Available models
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AiModel"
+                required: [models]
+
+  /auth/user:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+
+  /auth/connections:
+    get:
+      operationId: getOAuthConnections
+      tags: [auth]
+      summary: Get user OAuth connections
+      responses:
+        "200":
+          description: OAuth connections
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connections:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OAuthConnection"
+                required: [connections]
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    Disk:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [hdd, ssd, m2, nvme, usb, nas]
+        path:
+          type: string
+        totalBytes:
+          type: integer
+        usedBytes:
+          type: integer
+        freeBytes:
+          type: integer
+        isBackup:
+          type: boolean
+        isActive:
+          type: boolean
+        label:
+          type: string
+        mountPoint:
+          type: string
+        createdAt:
+          type: string
+      required: [id, name, type, path, totalBytes, usedBytes, freeBytes, isBackup, isActive, createdAt]
+
+    AddDiskBody:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [hdd, ssd, m2, nvme, usb, nas]
+        path:
+          type: string
+        isBackup:
+          type: boolean
+        label:
+          type: string
+      required: [name, type, path]
+
+    UpdateDiskBody:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        isBackup:
+          type: boolean
+        isActive:
+          type: boolean
+
+    StorageSummary:
+      type: object
+      properties:
+        totalDisks:
+          type: integer
+        activeDisks:
+          type: integer
+        backupDisks:
+          type: integer
+        totalBytes:
+          type: integer
+        usedBytes:
+          type: integer
+        freeBytes:
+          type: integer
+        usagePercent:
+          type: number
+        diskBreakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              diskId:
+                type: string
+              name:
+                type: string
+              usedBytes:
+                type: integer
+              totalBytes:
+                type: integer
+            required: [diskId, name, usedBytes, totalBytes]
+      required: [totalDisks, activeDisks, backupDisks, totalBytes, usedBytes, freeBytes, usagePercent, diskBreakdown]
+
+    FileItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+        diskId:
+          type: string
+        sizeBytes:
+          type: integer
+        mimeType:
+          type: string
+        category:
+          type: string
+        aiSuggestedPath:
+          type: string
+        aiApproved:
+          type: boolean
+        thumbnail:
+          type: string
+        createdAt:
+          type: string
+        modifiedAt:
+          type: string
+        accessedAt:
+          type: string
+      required: [id, name, path, diskId, sizeBytes, category, aiApproved, createdAt, modifiedAt]
+
+    MoveFileBody:
+      type: object
+      properties:
+        newPath:
+          type: string
+        diskId:
+          type: string
+        aiApproved:
+          type: boolean
+      required: []
+
+    FileCategory:
+      type: object
+      properties:
+        category:
+          type: string
+        count:
+          type: integer
+        totalBytes:
+          type: integer
+        color:
+          type: string
+      required: [category, count, totalBytes]
+
+    AiMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        attachments:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+      required: [id, role, content, createdAt]
+
+    AiChatBody:
+      type: object
+      properties:
+        message:
+          type: string
+        attachments:
+          type: array
+          items:
+            type: string
+        modelId:
+          type: string
+      required: [message]
+
+    AiChatResponse:
+      type: object
+      properties:
+        message:
+          $ref: "#/components/schemas/AiMessage"
+        suggestions:
+          type: array
+          items:
+            type: string
+      required: [message]
+
+    SuggestStorageBody:
+      type: object
+      properties:
+        fileIds:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+      required: [fileIds]
+
+    StorageSuggestion:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            type: object
+            properties:
+              fileId:
+                type: string
+              suggestedDiskId:
+                type: string
+              suggestedPath:
+                type: string
+              reasoning:
+                type: string
+              confidence:
+                type: number
+            required: [fileId, suggestedDiskId, suggestedPath, reasoning, confidence]
+      required: [suggestions]
+
+    AiModel:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [llm, vision, voice, multimodal]
+        provider:
+          type: string
+        isLocal:
+          type: boolean
+        isActive:
+          type: boolean
+        endpoint:
+          type: string
+        description:
+          type: string
+      required: [id, name, type, provider, isLocal, isActive]
+
+    UserSettings:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        activeModelId:
+          type: string
+        defaultDiskId:
+          type: string
+        autoOrganize:
+          type: boolean
+        requireApproval:
+          type: boolean
+        darkMode:
+          type: boolean
+        language:
+          type: string
+        localLlmEndpoint:
+          type: string
+      required: [id, userId, autoOrganize, requireApproval, darkMode, language]
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        activeModelId:
+          type: string
+        defaultDiskId:
+          type: string
+        autoOrganize:
+          type: boolean
+        requireApproval:
+          type: boolean
+        darkMode:
+          type: boolean
+        language:
+          type: string
+        localLlmEndpoint:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        avatar:
+          type: string
+        createdAt:
+          type: string
+      required: [id, email, name, createdAt]
+
+    OAuthConnection:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+          enum: [google, discord, telegram, line, facebook, instagram, github]
+        connected:
+          type: boolean
+        username:
+          type: string
+        avatar:
+          type: string
+        connectedAt:
+          type: string
+      required: [id, provider, connected]
